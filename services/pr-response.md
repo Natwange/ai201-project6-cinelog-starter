@@ -37,9 +37,8 @@
 **If you'd still prefer recency (a fair call), the cleanest resolution is to keep alphabetical as the default display order but add a sort toggle (?sort=date_added) so users get recency on demand — that honors your use case without making it the default. Happy to implement that instead if you'd rather.**
 
 ## Comment 6 — Rebase
-**What conflicted:**
-**How I resolved it:**
-**How I verified no conflict remains:**
-
+**What conflicted: .gitignore (a trivial add/add overlap). The UUID change did not surface as a Git conflict — instead, main's rewrite of models.py silently dropped my WatchlistEntry class during the rebase.**
+**How I resolved it: Resolved .gitignore by keeping all entries. Then caught the silent loss when pytest failed with ImportError: cannot import name 'WatchlistEntry'. Re-added the WatchlistEntry model with film_id as db.String(36) (UUID) to match main's refactor, and updated the watchlist docstrings from int to UUID.**
+**How I verified: git log --oneline --graph shows a linear history with no merge commits; pytest -v → 5 passed.**
 ## PR Description
 <!-- Written at the end — feature overview, design decisions, manual testing steps -->
