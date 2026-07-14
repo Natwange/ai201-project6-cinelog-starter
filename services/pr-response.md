@@ -106,4 +106,16 @@ These steps use PowerShell (`Invoke-RestMethod`), which handles JSON quoting cle
 <!-- Paste your `git log --oneline` screenshot here after the interactive rebase -->
 
 ### Commit history (no merge commits, conventional format)
-<!-- Paste the `git log --oneline` text output here as a backup to the screenshot -->
+```
+ec932a9 docs: add PR description and AI usage notes
+1b6239d fix: set WatchlistEntry film_id to UUID after refactor
+70cdbac docs: add pr-response with design decisions
+c22174e test: add nonexistent-film test for add_to_watchlist
+8b05012 fix: add deduplication check for watchlist entries
+6daa2a8 fix: rename save_to_watchlist to add_to_watchlist
+ec62006 fix: use db.session.get for film retrieval
+2cbaebf feat: add watchlist model and add_to_watchlist endpoint
+```
+(All 8 commits use conventional format; no merge commits on the branch — `bbe206c` is main's own merge, which is the rebase base.)
+
+![Clean commit history](image-1.png)
