@@ -103,7 +103,7 @@ These steps use PowerShell (`Invoke-RestMethod`), which handles JSON quoting cle
    ```
 
 ### Screenshot of clean commit history
-<!-- Paste your `git log --oneline` screenshot here after the interactive rebase -->
+![Clean commit history](image-1.png)
 
 ### Commit history (no merge commits, conventional format)
 ```
@@ -116,6 +116,4 @@ c22174e test: add nonexistent-film test for add_to_watchlist
 ec62006 fix: use db.session.get for film retrieval
 2cbaebf feat: add watchlist model and add_to_watchlist endpoint
 ```
-(All 8 commits use conventional format; no merge commits on the branch — `bbe206c` is main's own merge, which is the rebase base.)
-
-![Clean commit history](image-1.png)
+(All 8 commits use conventional format; no merge commits on the branch — `bbe206c` is main's own merge, which is the rebase base)
