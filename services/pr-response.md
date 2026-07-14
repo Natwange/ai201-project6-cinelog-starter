@@ -1,8 +1,14 @@
 # PR Response Doc — CineLog Watchlist Feature
 
 ## AI Usage
-<!-- Fill in at the end — how you used AI tools during this project -->
-**Verified with AI whether I changed all the save_to_watchlist function defs to add_to_watchlist**
+
+I used AI (Claude) at several specific points in this project:
+
+- **Codebase orientation:** I asked it to explain how `add_to_collection` persists data (the `db.session.add` vs `db.session.commit` distinction) and what the `CollectionEntry` model actually enforces, so I understood the existing pattern before mirroring it for the watchlist.
+- **Verifying the rename (Comment 1):** I had it confirm I'd updated every `save_to_watchlist` call site and check that a project-wide search for the old name returned zero matches.
+- **Verifying commit format (Milestone 4):** I gave it my `git log --oneline` output and asked whether the messages followed Conventional Commits and whether any commit bundled multiple logical changes. It flagged that my `test:` commit was mislabeled `feat:`, my docs commit was mislabeled `refactor:`, and that `added watchlist model and endpoint fixed a bug more changes` bundled several changes — I then reworded them via `git rebase -i`.
+- **Debugging the rebase (Comment 6):** When `pytest` failed with `ImportError: cannot import name 'WatchlistEntry'`, it helped me trace that the rebase had silently dropped the model class from `models.py`, and I restored it with a UUID `film_id`.
+- **Stress-testing my design arguments (Comments 4 & 5):** I drafted my own positions first, then asked AI to poke holes in them. For **Comment 4 (visibility)**, my original draft only argued "public fosters community"; the AI pushed me to name the *specific* user behavior (empty new accounts + defaults are rarely changed) and to acknowledge the concrete privacy tradeoff, which my final version now does. For **Comment 5 (sort order)**, my first draft contradicted itself by saying I "completely agree" with the reviewer while arguing against him; the AI caught that, and my final argument reframes it as a "transient vs. durable need" tradeoff instead of a flat preference. The positions are mine — AI was used to sharpen the reasoning, not generate the stance.
 
 
 ## Comment 1 — Rename
@@ -41,4 +47,63 @@
 **How I resolved it: Resolved .gitignore by keeping all entries. Then caught the silent loss when pytest failed with ImportError: cannot import name 'WatchlistEntry'. Re-added the WatchlistEntry model with film_id as db.String(36) (UUID) to match main's refactor, and updated the watchlist docstrings from int to UUID.**
 **How I verified: git log --oneline --graph shows a linear history with no merge commits; pytest -v → 5 passed.**
 ## PR Description
-<!-- Written at the end — feature overview, design decisions, manual testing steps -->
+
+### What this feature does
+This PR adds a **watchlist** to CineLog — a list of films a user wants to watch later, separate from their collection (films they've already watched). It introduces:
+
+- A `WatchlistEntry` model (`user_id`, `film_id`, `date_added`, `public`), with `film_id` as a UUID to match main's post-refactor `Film.id`.
+- `add_to_watchlist(user_id, film_id)` in `services/watchlist_service.py`, which validates the film exists (raises `FilmNotFoundError` otherwise) and guards against adding a film already in the user's collection (raises `AlreadyInCollectionError`).
+- `get_watchlist(user_id)`, returning the user's watchlist as a list of film dicts.
+- Two endpoints: `POST /watchlist/<user_id>/add` (body `{ "film_id": "<uuid>" }`) and `GET /watchlist/<user_id>`.
+- A test (`tests/test_watchlist.py`) covering the nonexistent-film case.
+
+### Design decisions
+1. **Default visibility → `public=True`.** Watchlists are public by default because CineLog is a community app optimizing for discovery: new accounts start empty, and since most users never change defaults, a public default keeps the shared browse-and-discover feed populated. The tradeoff is privacy — a user could expose viewing intentions before realizing lists are visible — which is bounded by `public` being a **per-entry** field, so individual films can be made private. (Full reasoning in Comment 4.)
+2. **Default sort order → alphabetical by title.** A watchlist is a reference list you return to, so I optimized for *findability* (a stable, predictable position per title) over recency. I engaged the maintainer's "recent-first" preference directly: recency is a strong but *transient* need, while findability is *durable* and grows with the list. Offered a `?sort=date_added` toggle as a compromise if recency is preferred as the default. (Full reasoning in Comment 5.)
+
+### How to manually test the feature
+These steps use PowerShell (`Invoke-RestMethod`), which handles JSON quoting cleanly on Windows.
+
+1. **Seed a user and a film:**
+   ```
+   python seed_demo.py
+   ```
+   Copy the printed `USER_ID` and `FILM_ID` (both are UUIDs).
+
+2. **Start the app** (in a separate terminal):
+   ```
+   python app.py
+   ```
+
+3. **Add a film to the watchlist** — expect `201` and the new entry:
+   ```powershell
+   $userId = "<USER_ID>"
+   $body   = @{ film_id = "<FILM_ID>" } | ConvertTo-Json
+   Invoke-RestMethod -Uri "http://localhost:5000/watchlist/$userId/add" `
+     -Method Post -ContentType "application/json" -Body $body
+   ```
+
+4. **View the watchlist** — expect the film you just added:
+   ```powershell
+   Invoke-RestMethod -Uri "http://localhost:5000/watchlist/$userId"
+   ```
+
+5. **Test the not-found guard** — adding a nonexistent film should return `404`:
+   ```powershell
+   $bad = @{ film_id = "00000000-0000-0000-0000-000000000000" } | ConvertTo-Json
+   try {
+       Invoke-RestMethod -Uri "http://localhost:5000/watchlist/$userId/add" `
+         -Method Post -ContentType "application/json" -Body $bad
+   } catch { $_.Exception.Response.StatusCode.value__ }   # -> 404
+   ```
+
+6. **Run the test suite** — expect all green:
+   ```
+   pytest -v
+   ```
+
+### Screenshot of clean commit history
+<!-- Paste your `git log --oneline` screenshot here after the interactive rebase -->
+
+### Commit history (no merge commits, conventional format)
+<!-- Paste the `git log --oneline` text output here as a backup to the screenshot -->
